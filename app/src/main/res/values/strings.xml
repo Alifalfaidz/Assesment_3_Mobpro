@@ -1,4 +1,9 @@
 <resources>
     <string name="app_name">Mobpro_Assesment_3</string>
     <string name="gambar">Gambar %1$s</string>
+    <string name="list">Tampilan list</string>
+    <string name="grid">Tampilan Grid</string>
+    <string name="profil">Profil</string>
+    <string name="tutup">Tutup</string>
+    <string name="logout">Logout</string>
 </resources>
