@@ -33,3 +33,5 @@ object ParfumApi{
         return "${BASE_URL}B7zTqr/$image"
     }
 }
+
+enum class ApiStatus {LOADING, SUCCESS, FAILED}

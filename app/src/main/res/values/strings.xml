@@ -6,4 +6,7 @@
     <string name="profil">Profil</string>
     <string name="tutup">Tutup</string>
     <string name="logout">Logout</string>
+    <string name="error">Gagal memuat data.. Koneksi error</string>
+    <string name="tyr_again">Coba lagi</string>
+    <string name="tambah_parfum">Tambah Parfum</string>
 </resources>
