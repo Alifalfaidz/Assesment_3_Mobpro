@@ -30,16 +30,11 @@ class MainViewModel : ViewModel() {
         private set
 
 
-
-    init {
-        retrieveData()
-    }
-
-    fun retrieveData() {
+    fun retrieveData(useremail: String) {
         viewModelScope.launch(Dispatchers.IO) {
             status.value = ApiStatus.LOADING
             try {
-                data.value = ParfumApi.service.getParfum()
+                data.value = ParfumApi.service.getParfum(useremail)
                 status.value = ApiStatus.SUCCESS
             } catch (e: Exception) {
                 Log.d("MainViewModel", "Failure: ${e.message}")
@@ -63,7 +58,7 @@ class MainViewModel : ViewModel() {
         try {
             val result = ParfumApi.service.deleteparfum(id)
             Log.d("MainViewModel", "Berhasil menghapus gambar")
-            retrieveData()
+            retrieveData(userId)
         } catch (e: Exception) {
             Log.d("MainViewModel", "Gagal Hapus gambar: ${e.message}")
         }

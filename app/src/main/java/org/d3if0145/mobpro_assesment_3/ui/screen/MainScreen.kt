@@ -31,6 +31,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -45,6 +46,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -116,11 +118,14 @@ fun MainScreen(){
             stringImage = bitmapToString(bitmap!!)
         }
     }
+    LaunchedEffect(user.email){
+        viewModel.retrieveData(user.email)
+    }
     Scaffold (
         topBar = {
             TopAppBar(
                 title = {
-                    Text(text = "Mobpro 1")
+                    Text(text = "MY PARFUME")
                 },
                 colors = TopAppBarDefaults.mediumTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -172,7 +177,7 @@ fun MainScreen(){
             }
         }
     ) {
-            padding -> ScreenContent(Modifier.padding(padding), showlist)
+            padding -> ScreenContent(Modifier.padding(padding), showlist, user)
 
         if (showDialog){
             ProfilDialog(
@@ -188,7 +193,10 @@ fun MainScreen(){
                 bitmap = bitmap,
                 onDismissRequest = { showParfumDialog = false }
             ) { namaParfum, brandParfum, gender ->
-                viewModel.saveData(Parfum(String(),namaParfum, brandParfum, gender, stringImage, user.email))
+                CoroutineScope(Dispatchers.IO).launch {
+                    viewModel.saveData(Parfum(String(),namaParfum, brandParfum, gender, stringImage, user.email))
+                viewModel.retrieveData(user.email)
+                }
                 showParfumDialog = false
             }
         }
@@ -196,7 +204,7 @@ fun MainScreen(){
     }
 
 @Composable
-fun GridItem(parfum: Parfum, onClick: () -> Unit){
+fun GridItem(parfum: Parfum, onClick: () -> Unit, user: User, viewModel: MainViewModel){
     var showDialogDelete by remember { mutableStateOf(false) }
     Card(
         modifier = Modifier
@@ -241,6 +249,22 @@ fun GridItem(parfum: Parfum, onClick: () -> Unit){
                 fontWeight = FontWeight.Bold
             )
             IconButton(onClick = { showDialogDelete = true}) {
+                if (parfum.email == user.email) {
+                    IconButton(onClick = { showDialogDelete = true }) {
+                        Icon(imageVector = Icons.Default.Delete, contentDescription = null, tint = Color.Black)
+                        if (showDialogDelete) {
+                            DeleteDialog(
+                                onDismissRequest = { showDialogDelete = false }) {
+                                CoroutineScope(Dispatchers.IO).launch {
+                                    viewModel.deleteImage(
+                                        user.email,
+                                        parfum.id
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
 
             }
         }
@@ -248,7 +272,8 @@ fun GridItem(parfum: Parfum, onClick: () -> Unit){
 }
 
 @Composable
-fun ListItem(parfum: Parfum) {
+fun ListItem(parfum: Parfum, onClick: () -> Unit, user: User, viewModel: MainViewModel) {
+    var showDialogDelete by remember { mutableStateOf(false) }
     Box (
         modifier = Modifier
             .padding(4.dp)
@@ -289,11 +314,29 @@ fun ListItem(parfum: Parfum) {
                 color = Color.White
             )
         }
+        IconButton(onClick = { showDialogDelete = true}) {
+            if (parfum.email == user.email) {
+                IconButton(onClick = { showDialogDelete = true }) {
+                    Icon(imageVector = Icons.Default.Delete, contentDescription = null, tint = Color.White)
+                    if (showDialogDelete) {
+                        DeleteDialog(
+                            onDismissRequest = { showDialogDelete = false }) {
+                            CoroutineScope(Dispatchers.IO).launch {
+                                viewModel.deleteImage(
+                                    user.email,
+                                    parfum.id
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
 @Composable
-fun ScreenContent(modifier: Modifier, showList: Boolean) {
+fun ScreenContent(modifier: Modifier, showList: Boolean, user: User) {
     val viewModel: MainViewModel = viewModel()
     val data by viewModel.data
     val status by viewModel.status.collectAsState()
@@ -321,9 +364,7 @@ fun ScreenContent(modifier: Modifier, showList: Boolean) {
                     contentPadding = PaddingValues(bottom = 80.dp)
                 ) {
                     items(data) { parfum ->
-                        GridItem(parfum = parfum, onClick = {
-                            // Aksi yang diinginkan saat item di-klik
-                        })
+                        GridItem(parfum = parfum, onClick = {}, user = user, viewModel)
                     }
                 }
             } else {
@@ -334,7 +375,7 @@ fun ScreenContent(modifier: Modifier, showList: Boolean) {
                     columns = GridCells.Fixed(1)
                 ) {
                     items(data) { parfum ->
-                        ListItem(parfum = parfum)
+                        ListItem(parfum = parfum, onClick = {}, user = user, viewModel)
                     }
                 }
             }
@@ -346,7 +387,7 @@ fun ScreenContent(modifier: Modifier, showList: Boolean) {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(text = stringResource(id = R.string.error))
-                Button(onClick = { viewModel.retrieveData() },
+                Button(onClick = { viewModel.retrieveData(user.email) },
                     modifier = Modifier.padding(top = 16.dp),
                     contentPadding = PaddingValues(horizontal = 32.dp, vertical = 16.dp)
                     ) {
@@ -474,7 +515,7 @@ fun stringToBitmap(encodedString: String): Bitmap? {
         null
     }
 }
-fun bitmapToString(bitmap: Bitmap, format: Bitmap.CompressFormat = Bitmap.CompressFormat.JPEG, quality: Int = 40): String {
+fun bitmapToString(bitmap: Bitmap, format: Bitmap.CompressFormat = Bitmap.CompressFormat.JPEG, quality: Int = 10): String {
     // Resize the bitmap if necessary
     val resizedBitmap = resizeBitmap(bitmap, maxWidth = 500, maxHeight = 500)
 
