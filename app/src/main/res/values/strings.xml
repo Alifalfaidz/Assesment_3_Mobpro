@@ -9,4 +9,9 @@
     <string name="error">Gagal memuat data.. Koneksi error</string>
     <string name="tyr_again">Coba lagi</string>
     <string name="tambah_parfum">Tambah Parfum</string>
+    <string name="namaParfum">Nama Parfum</string>
+    <string name="brandParfum">Brand Parfum</string>
+    <string name="gender">gender</string>
+    <string name="batal">Batal</string>
+    <string name="simpan">Simpan</string>
 </resources>

@@ -4,10 +4,13 @@ package org.d3if0145.mobpro_assesment_3.ui.screen
 import android.content.ContentResolver
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.ImageDecoder
 import android.os.Build
 import android.provider.MediaStore
+import android.util.Base64
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -17,12 +20,15 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Button
@@ -55,6 +61,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.credentials.ClearCredentialStateRequest
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
@@ -66,6 +73,7 @@ import androidx.datastore.dataStore
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.canhub.cropper.CropImage.CancelledResult.bitmap
 import com.canhub.cropper.CropImageContract
 import com.canhub.cropper.CropImageContractOptions
 import com.canhub.cropper.CropImageOptions
@@ -84,6 +92,7 @@ import org.d3if0145.mobpro_assesment_3.network.ApiStatus
 import org.d3if0145.mobpro_assesment_3.network.ParfumApi
 import org.d3if0145.mobpro_assesment_3.network.UserDataStore
 import org.d3if0145.mobpro_assesment_3.ui.theme.Mobpro_Assesment_3Theme
+import java.io.ByteArrayOutputStream
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -93,11 +102,19 @@ fun MainScreen(){
     val context = LocalContext.current
     val dataStore = UserDataStore(context)
     val user by dataStore.userFlow.collectAsState(User())
+    val viewModel: MainViewModel = viewModel()
+    var stringImage = ""
+
 
     var showDialog by remember { mutableStateOf(false) }
+    var showParfumDialog by remember { mutableStateOf(false) }
     var bitmap: Bitmap? by remember { mutableStateOf(null) }
-    val launcher = rememberLauncherForActivityResult(CropImageContract()) {
+    val launcher = rememberLauncherForActivityResult(CropImageContract()){
         bitmap = getCroppedImage(context.contentResolver, it)
+        if (bitmap != null) {
+            showParfumDialog = true
+            stringImage = bitmapToString(bitmap!!)
+        }
     }
     Scaffold (
         topBar = {
@@ -165,11 +182,22 @@ fun MainScreen(){
                 showDialog = false
             }
         }
+
+        if (showParfumDialog) {
+            ParfumDialog(
+                bitmap = bitmap,
+                onDismissRequest = { showParfumDialog = false }
+            ) { namaParfum, brandParfum, gender ->
+                viewModel.saveData(Parfum(String(),namaParfum, brandParfum, gender, stringImage, user.email))
+                showParfumDialog = false
+            }
+        }
+        }
     }
-}
 
 @Composable
 fun GridItem(parfum: Parfum, onClick: () -> Unit){
+    var showDialogDelete by remember { mutableStateOf(false) }
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -182,7 +210,18 @@ fun GridItem(parfum: Parfum, onClick: () -> Unit){
         Column(
             modifier = Modifier.padding(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
+        ) {AsyncImage(model = ImageRequest.Builder(LocalContext.current)
+            .data(ParfumApi.getParfumUrl(parfum.image))
+            .crossfade(true)
+            .build(),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            placeholder = painterResource(id = R.drawable.loading_img),
+            error = painterResource(id = R.drawable.baseline_broken_image_24),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(4.dp)
+        )
             Text(
                 text = parfum.namaParfum,
                 maxLines = 2,
@@ -201,6 +240,9 @@ fun GridItem(parfum: Parfum, onClick: () -> Unit){
                 overflow = TextOverflow.Ellipsis,
                 fontWeight = FontWeight.Bold
             )
+            IconButton(onClick = { showDialogDelete = true}) {
+
+            }
         }
     }
 }
@@ -315,6 +357,45 @@ fun ScreenContent(modifier: Modifier, showList: Boolean) {
     }
 }
 
+@Composable
+fun DeleteDialog(
+    onDismissRequest: () -> Unit,
+    onDelete: () -> Unit
+){
+    Dialog(onDismissRequest = { onDismissRequest() },) {
+        Card(
+            modifier = Modifier.padding(16.dp),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp)
+            ) {
+                Text(text = "Apakah kamu yakin ingin menghapus ini?")
+                Spacer(modifier = Modifier.padding(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Button(
+                        onClick = { onDismissRequest() },
+                        modifier = Modifier.padding(end = 16.dp)
+                    ) {
+                        Text(text = "Tidak")
+                    }
+                    Button(
+                        onClick = { onDelete() },
+                        modifier = Modifier.padding(end = 5.dp)
+                    ) {
+                        Text(text = "Iya")
+                    }
+
+                }
+            }
+        }
+    }
+}
+
+
 
 private suspend fun signIn(context: Context, dataStore: UserDataStore){
     val googleIdOption: GetGoogleIdOption = GetGoogleIdOption.Builder()
@@ -382,6 +463,45 @@ private fun getCroppedImage(
         val source = ImageDecoder.createSource(resolver, uri)
         ImageDecoder.decodeBitmap(source)
     }
+}
+
+fun stringToBitmap(encodedString: String): Bitmap? {
+    return try {
+        val decodedString = Base64.decode(encodedString, Base64.DEFAULT)
+        BitmapFactory.decodeByteArray(decodedString, 0, decodedString.size)
+    } catch (e: Exception) {
+        e.printStackTrace()
+        null
+    }
+}
+fun bitmapToString(bitmap: Bitmap, format: Bitmap.CompressFormat = Bitmap.CompressFormat.JPEG, quality: Int = 40): String {
+    // Resize the bitmap if necessary
+    val resizedBitmap = resizeBitmap(bitmap, maxWidth = 500, maxHeight = 500)
+
+    return ByteArrayOutputStream().use { byteArrayOutputStream ->
+        resizedBitmap.compress(format, quality, byteArrayOutputStream)
+        val byteArray = byteArrayOutputStream.toByteArray()
+        Base64.encodeToString(byteArray, Base64.NO_WRAP)
+    }
+}
+
+fun resizeBitmap(bitmap: Bitmap, maxWidth: Int, maxHeight: Int): Bitmap {
+    val width = bitmap.width
+    val height = bitmap.height
+
+    val aspectRatio = width.toFloat() / height.toFloat()
+    val newWidth: Int
+    val newHeight: Int
+
+    if (width > height) {
+        newWidth = maxWidth
+        newHeight = (newWidth / aspectRatio).toInt()
+    } else {
+        newHeight = maxHeight
+        newWidth = (newHeight * aspectRatio).toInt()
+    }
+
+    return Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
 }
 @Preview(showBackground = true)
 @Composable
