@@ -34,7 +34,8 @@ class MainViewModel : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
             status.value = ApiStatus.LOADING
             try {
-                data.value = ParfumApi.service.getParfum(useremail)
+                val parfums = ParfumApi.service.getParfum(useremail)
+                data.value = parfums
                 status.value = ApiStatus.SUCCESS
             } catch (e: Exception) {
                 Log.d("MainViewModel", "Failure: ${e.message}")
@@ -43,20 +44,22 @@ class MainViewModel : ViewModel() {
         }
     }
     fun saveData(parfum: Parfum) {
-        try {
-            viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
                 val response = ParfumApi.service.postparfum(parfum)
+                data.value = data.value + response
                 _postResponse.postValue(response)
+                Log.d("MainViewModel", "Success")
+            } catch (e: Exception) {
+                Log.e("MainViewModel", "Failure ${e.message}")
             }
-            Log.d("MainViewModel", "Success")
-        } catch (e: Exception) {
-            Log.e("MainViewModel", "Failure ${e.message}")
         }
     }
 
     suspend fun deleteImage(userId: String, id: String) {
         try {
             val result = ParfumApi.service.deleteparfum(id)
+            data.value = data.value.filter { it.id != id }
             Log.d("MainViewModel", "Berhasil menghapus gambar")
             retrieveData(userId)
         } catch (e: Exception) {
